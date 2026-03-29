@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ω JARBIS - Panel de Configuración</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 2rem; background: #f8fafc; }
+      .card { background: white; border-radius: 12px; padding: 1.2rem; max-width: 680px; box-shadow: 0 8px 30px rgba(0,0,0,.08); }
+      h1 { margin-top: 0; }
+      label { display: block; margin-top: .8rem; font-weight: 600; }
+      input[type='number'] { width: 100%; padding: .5rem; margin-top: .3rem; }
+      button { margin-top: 1rem; padding: .6rem .9rem; border: none; background: #0f172a; color: white; border-radius: 8px; cursor: pointer; }
+      pre { background: #0b1020; color: #d1d5db; padding: .75rem; border-radius: 8px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Panel de Configuración Ω JARBIS</h1>
+      <p>Configura parámetros críticos del motor de decisiones y del motor mimético auditado.</p>
+
+      <label for="tenant">Tenant ID</label>
+      <input id="tenant" value="demo-tenant" />
+
+      <label for="lowStock">Umbral de stock mínimo</label>
+      <input id="lowStock" type="number" min="0" step="1" value="10" />
+
+      <label for="spikeFactor">Factor de anomalía (consumo)</label>
+      <input id="spikeFactor" type="number" min="1" step="0.1" value="1.8" />
+
+      <label>
+        <input id="autoRec" type="checkbox" checked /> Activar recomendaciones automáticas
+      </label>
+
+      <button id="saveBtn">Guardar configuración</button>
+      <button id="auditBtn">Ver auditoría del motor mimético</button>
+
+      <h3>Salida</h3>
+      <pre id="output">Esperando acciones...</pre>
+    </div>
+
+    <script>
+      const output = document.getElementById('output');
+
+      async function saveConfig() {
+        const tenant = document.getElementById('tenant').value;
+        const payload = {
+          low_stock_threshold: Number(document.getElementById('lowStock').value),
+          anomaly_spike_factor: Number(document.getElementById('spikeFactor').value),
+          auto_recommendations: document.getElementById('autoRec').checked
+        };
+
+        const response = await fetch(`/api/v1/tenants/${tenant}/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        output.textContent = JSON.stringify(await response.json(), null, 2);
+      }
+
+      async function auditMimeticEngine() {
+        const tenant = document.getElementById('tenant').value;
+        const response = await fetch(`/api/v1/tenants/${tenant}/audit`);
+        output.textContent = JSON.stringify(await response.json(), null, 2);
+      }
+
+      document.getElementById('saveBtn').addEventListener('click', saveConfig);
+      document.getElementById('auditBtn').addEventListener('click', auditMimeticEngine);
+    </script>
+  </body>
+</html>
