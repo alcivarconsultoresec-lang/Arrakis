@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ω JARBIS - Torre de Control</title>
+    <style>
+      body { font-family: Inter, Arial, sans-serif; margin: 2rem; background: #f3f7fb; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+      .card { background: white; border-radius: 12px; padding: 1rem; box-shadow: 0 6px 22px rgba(0,0,0,.08); }
+      h1,h2 { margin: .2rem 0 .8rem; }
+      label { display: block; margin-top: .7rem; font-weight: 600; }
+      input, select { width: 100%; padding: .45rem; margin-top: .25rem; }
+      button { margin-top: .8rem; margin-right: .3rem; padding: .55rem .8rem; border: none; background: #0f172a; color: #fff; border-radius: 8px; cursor: pointer; }
+      pre { background: #0b1020; color: #d1d5db; padding: .75rem; border-radius: 8px; max-height: 420px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Ω JARBIS · Panel de Configuración y Torre de Control</h1>
+    <div class="grid">
+      <section class="card">
+        <h2>Configuración por Tenant</h2>
+        <label>Tenant ID</label><input id="tenant" value="demo-tenant" />
+        <label>Umbral de stock</label><input id="lowStock" type="number" min="0" step="1" value="10" />
+        <label>Factor de anomalía</label><input id="spikeFactor" type="number" min="1" step="0.1" value="1.8" />
+        <label>Modo de política por defecto</label>
+        <select id="defaultPolicyMode">
+          <option value="inform">inform</option>
+          <option value="suggest" selected>suggest</option>
+          <option value="approval">approval</option>
+          <option value="auto">auto</option>
+          <option value="auto_reversible">auto_reversible</option>
+        </select>
+        <label><input id="autoRec" type="checkbox" checked /> Recomendaciones automáticas</label>
+        <button id="saveConfigBtn">Guardar Config</button>
+      </section>
+
+      <section class="card">
+        <h2>Políticas y Gobernanza</h2>
+        <label>Scope</label><input id="scope" value="inventory_restock" />
+        <label>Mode</label>
+        <select id="policyMode">
+          <option value="inform">inform</option>
+          <option value="suggest" selected>suggest</option>
+          <option value="approval">approval</option>
+          <option value="auto">auto</option>
+          <option value="auto_reversible">auto_reversible</option>
+        </select>
+        <button id="savePolicyBtn">Guardar Política</button>
+        <button id="listPoliciesBtn">Listar Políticas</button>
+        <button id="auditBtn">Auditoría Mimética</button>
+        <button id="towerBtn">Torre de Control</button>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:1rem;">
+      <h2>Salida</h2>
+      <pre id="output">Esperando acciones...</pre>
+    </section>
+
+    <script>
+      const output = document.getElementById('output');
+      const tenant = () => document.getElementById('tenant').value;
+
+      async function saveConfig() {
+        const payload = {
+          low_stock_threshold: Number(document.getElementById('lowStock').value),
+          anomaly_spike_factor: Number(document.getElementById('spikeFactor').value),
+          auto_recommendations: document.getElementById('autoRec').checked,
+          default_policy_mode: document.getElementById('defaultPolicyMode').value,
+        };
+        const r = await fetch(`/api/v1/tenants/${tenant()}/config`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        output.textContent = JSON.stringify(await r.json(), null, 2);
+      }
+
+      async function savePolicy() {
+        const payload = { scope: document.getElementById('scope').value, mode: document.getElementById('policyMode').value, thresholds: {}, active: true };
+        const r = await fetch(`/api/v1/tenants/${tenant()}/policies`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        output.textContent = JSON.stringify(await r.json(), null, 2);
+      }
+
+      async function listPolicies() {
+        const r = await fetch(`/api/v1/tenants/${tenant()}/policies`);
+        output.textContent = JSON.stringify(await r.json(), null, 2);
+      }
+
+      async function audit() {
+        const r = await fetch(`/api/v1/tenants/${tenant()}/audit`);
+        output.textContent = JSON.stringify(await r.json(), null, 2);
+      }
+
+      async function tower() {
+        const r = await fetch(`/api/v1/tenants/${tenant()}/control-tower`);
+        output.textContent = JSON.stringify(await r.json(), null, 2);
+      }
+
+      document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+      document.getElementById('savePolicyBtn').addEventListener('click', savePolicy);
+      document.getElementById('listPoliciesBtn').addEventListener('click', listPolicies);
+      document.getElementById('auditBtn').addEventListener('click', audit);
+      document.getElementById('towerBtn').addEventListener('click', tower);
+    </script>
+  </body>
+</html>
