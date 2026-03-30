@@ -1,21 +1,80 @@
+"""Ω JARBIS Enterprise - FastAPI Application."""
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
 
-from app.services.operational_service import OperationalIntelligenceService
+from app.api.v1.endpoints.mobile_chat import router as mobile_chat_router
+from app.api.v1.endpoints.recipes import router as recipes_router
+from app.api.v1.endpoints.inventory import router as inventory_router
+from app.api.v1.endpoints.events import router as events_router
+from app.api.v1.endpoints.financial import router as financial_router
+from app.api.v1.endpoints.pos import router as pos_router
+from app.core.config import get_settings
+from app.infrastructure.db.database import init_db
 
-app = FastAPI(title="Ω JARBIS", version="0.1.0")
-service = OperationalIntelligenceService()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle manager para la aplicación."""
+    # Startup
+    logger.info("Starting Ω JARBIS Enterprise...")
+    
+    # Inicializar base de datos (si está habilitada)
+    try:
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.warning(f"Database initialization skipped: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Ω JARBIS Enterprise...")
+
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="Sistema de inteligencia operativa para cadenas de restaurantes",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan,
+)
+
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # En producción: especificar dominios permitidos
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Montar directorio estático
 static_dir = Path(__file__).parent / "static"
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+
+# ============================================================================
+# ENDPOINTS EXISTENTES (legacy compatibility)
+# ============================================================================
+
+from pydantic import BaseModel, Field
 
 class EventIn(BaseModel):
     type: str | None = None
@@ -34,34 +93,57 @@ class ConfigIn(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    """Health check endpoint."""
+    return {"status": "ok", "version": settings.APP_VERSION}
 
 
 @app.get("/config")
 def config_panel() -> FileResponse:
-    return FileResponse(static_dir / "config.html")
+    """Panel de configuración (legacy)."""
+    return FileResponse(static_dir / "config.html") if (static_dir / "config.html").exists() else {"message": "Config panel not found"}
 
 
-@app.post("/api/v1/tenants/{tenant_id}/events")
-def ingest_event(tenant_id: str, payload: EventIn) -> dict[str, Any]:
-    return service.ingest_event(tenant_id, payload.model_dump())
+# ============================================================================
+# NUEVOS ENDPOINTS API v1
+# ============================================================================
+
+# Mobile Chat (Core Feature)
+app.include_router(mobile_chat_router, prefix="/api/v1")
+
+# Recetas
+app.include_router(recipes_router, prefix="/api/v1")
+
+# Inventario
+app.include_router(inventory_router, prefix="/api/v1")
+
+# Eventos/Cotizaciones
+app.include_router(events_router, prefix="/api/v1")
+
+# Finanzas
+app.include_router(financial_router, prefix="/api/v1")
+
+# POS Integration
+app.include_router(pos_router, prefix="/api/v1")
 
 
-@app.get("/api/v1/tenants/{tenant_id}/recommendations")
-def get_recommendations(tenant_id: str) -> dict[str, Any]:
-    return service.get_recommendations(tenant_id)
+# ============================================================================
+# ROOT ENDPOINT
+# ============================================================================
 
-
-@app.get("/api/v1/tenants/{tenant_id}/config")
-def get_config(tenant_id: str) -> dict[str, Any]:
-    return service.get_config(tenant_id)
-
-
-@app.put("/api/v1/tenants/{tenant_id}/config")
-def update_config(tenant_id: str, payload: ConfigIn) -> dict[str, Any]:
-    return service.set_config(tenant_id, payload.model_dump())
-
-
-@app.get("/api/v1/tenants/{tenant_id}/audit")
-def get_audit_trace(tenant_id: str) -> dict[str, Any]:
-    return service.get_audit_trace(tenant_id)
+@app.get("/")
+def root() -> dict[str, Any]:
+    """Root endpoint con información de la API."""
+    return {
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "description": "Sistema de inteligencia operativa para restaurantes",
+        "docs": "/docs",
+        "endpoints": {
+            "mobile_chat": "/api/v1/mobile/chat",
+            "recipes": "/api/v1/recipes",
+            "inventory": "/api/v1/inventory",
+            "events": "/api/v1/events",
+            "financial": "/api/v1/financial",
+            "pos": "/api/v1/pos",
+        },
+    }
