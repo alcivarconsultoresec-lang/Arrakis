@@ -1,13 +1,59 @@
-```gitignore
-# Python
-__pycache__/
+```
+# Compiled and build artifacts
 *.pyc
-*.pyo
-*.pyd
+__pycache__/
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+*.egg-info/
+dist/
+build/
+*.so
+*.dylib
+*.dll
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.coverage.*
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Distribution / packaging
+*.tar.gz
+*.whl
+*.zip
+
+# Python
+*.py[cod]
+*$py.class
+*.so
 .Python
 env/
-venv/
-.venv/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -18,54 +64,8 @@ nosetests.xml
 coverage.xml
 *.cover
 *.log
-.pytest_cache/
+.git/
 .mypy_cache/
+.pytest_cache/
 .hypothesis/
-
-# Compiled and build artifacts
-*.o
-*.obj
-*.out
-*.so
-*.dll
-*.a
-*.class
-
-# Dependencies
-node_modules/
-target/
-.gradle/
-
-# Logs and temp files
-*.tmp
-*.swp
-*.swo
-
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# System files
-.DS_Store
-Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-
-# Distribution / packaging
-dist/
-build/
-*.egg-info/
-*.egg
-
-# Original rules preserved
-*.log
 ```

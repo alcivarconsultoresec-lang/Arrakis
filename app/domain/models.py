@@ -367,3 +367,52 @@ class POSIntegration(Base):
     
     # Relationships
     chain = relationship("Chain")
+
+
+# ============================================================================
+# MODELOS PARA MIMETIC ENGINE (no SQLAlchemy, dataclasses para lógica interna)
+# ============================================================================
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Entity:
+    """Entidad del sistema (para mimetic engine)."""
+    id: str
+    tenant_id: str
+    name: str
+    type: str
+    metadata: dict = field(default_factory=dict)
+
+
+@dataclass
+class Event:
+    """Evento del sistema (para mimetic engine)."""
+    id: str
+    tenant_id: str
+    type: str
+    payload: dict
+    timestamp: datetime
+    source: str = "chat"
+    note: str = ""
+
+
+@dataclass
+class TenantConfig:
+    """Configuración por tenant."""
+    low_stock_threshold: int = 10
+    anomaly_spike_factor: float = 1.8
+    auto_recommendations: bool = True
+    custom_rules: dict = field(default_factory=dict)
+
+
+@dataclass
+class DigitalTwinSnapshot:
+    """Snapshot del estado actual del tenant."""
+    tenant_id: str
+    stock: dict
+    consumption_trend: dict
+    risks: list
+    generated_at: datetime
+    recommendations: list = field(default_factory=list)
