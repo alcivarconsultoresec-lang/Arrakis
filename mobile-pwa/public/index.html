@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f3460">
+  <meta name="description" content="Ω JARBIS Enterprise - Asistente móvil inteligente para cadenas de restaurantes">
+  
+  <title>Ω JARBIS Enterprise</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-32.png">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  
+  <!-- Preconnect to API -->
+  <link rel="preconnect" href="http://localhost:8000">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #1a1a2e;
+      color: #fff;
+      overflow: hidden;
+    }
+    
+    /* Loading screen */
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #1a1a2e;
+      z-index: 1000;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .logo {
+      font-size: 3rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #0f3460, #533483);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #2d2d44;
+      border-top-color: #0f3460;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      margin-top: 1rem;
+      color: #888;
+      font-size: 0.9rem;
+    }
+    
+    /* Auth screen */
+    .auth-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #1a1a2e;
+      padding: 24px;
+      z-index: 999;
+    }
+    
+    .auth-screen.visible {
+      display: flex;
+    }
+    
+    .auth-card {
+      background: #2d2d44;
+      padding: 32px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    
+    .auth-title {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    
+    .auth-subtitle {
+      color: #888;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #ccc;
+      font-size: 0.9rem;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: #1a1a2e;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .form-input:focus {
+      border-color: #0f3460;
+    }
+    
+    .auth-button {
+      width: 100%;
+      padding: 14px;
+      background: #0f3460;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    
+    .auth-button:hover {
+      background: #1a4a7a;
+    }
+    
+    .auth-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .biometric-button {
+      background: transparent;
+      border: 1px solid #0f3460;
+      margin-top: 12px;
+    }
+    
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+      color: #666;
+    }
+    
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #444;
+    }
+    
+    .divider span {
+      padding: 0 12px;
+      font-size: 0.85rem;
+    }
+    
+    /* App container */
+    #app {
+      display: none;
+    }
+    
+    #app.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="logo">Ω JARBIS</div>
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Cargando...</div>
+  </div>
+  
+  <!-- Auth Screen -->
+  <div class="auth-screen" id="authScreen">
+    <div class="auth-card">
+      <h1 class="auth-title">Bienvenido</h1>
+      <p class="auth-subtitle">Inicia sesión para continuar</p>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="username">Usuario</label>
+          <input 
+            type="text" 
+            id="username" 
+            class="form-input" 
+            placeholder="tu@empresa.com"
+            autocomplete="username"
+            required
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="password">Contraseña</label>
+          <input 
+            type="password" 
+            id="password" 
+            class="form-input" 
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+        
+        <button type="submit" class="auth-button" id="loginButton">
+          Iniciar Sesión
+        </button>
+      </form>
+      
+      <div class="divider">
+        <span>o</span>
+      </div>
+      
+      <button class="auth-button biometric-button" id="biometricButton">
+        🔓 Usar Huella/Face ID
+      </button>
+    </div>
+  </div>
+  
+  <!-- App Container -->
+  <div id="app"></div>
+  
+  <script type="module">
+    import { api } from './src/services/api.js';
+    import { ChatInterface } from './src/components/Chat/ChatInterface.jsx';
+    
+    // ============================================================================
+    // STATE MANAGEMENT
+    // ============================================================================
+    
+    let isAuthenticated = false;
+    
+    // ============================================================================
+    // INITIALIZATION
+    // ============================================================================
+    
+    async function init() {
+      try {
+        // Check if service worker is supported
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.register('/service-worker.js');
+          console.log('[App] Service Worker registered:', registration.scope);
+          window.registration = registration;
+        }
+        
+        // Check authentication status
+        const token = api.getToken();
+        
+        if (token) {
+          // Verify token is still valid
+          try {
+            await api.getProfile();
+            isAuthenticated = true;
+            showApp();
+          } catch (error) {
+            console.log('Token expired, showing login');
+            showAuth();
+          }
+        } else {
+          showAuth();
+        }
+        
+        // Hide loading screen
+        setTimeout(() => {
+          document.getElementById('loadingScreen').classList.add('hidden');
+        }, 500);
+        
+      } catch (error) {
+        console.error('[App] Initialization error:', error);
+        showAuth();
+      }
+    }
+    
+    // ============================================================================
+    // AUTHENTICATION
+    // ============================================================================
+    
+    function showAuth() {
+      document.getElementById('authScreen').classList.add('visible');
+      document.getElementById('loadingScreen').classList.add('hidden');
+    }
+    
+    function showApp() {
+      document.getElementById('authScreen').classList.remove('visible');
+      document.getElementById('app').classList.add('visible');
+      
+      // Initialize chat interface
+      new ChatInterface('app', {
+        placeholder: 'Escribe tu mensaje o usa la voz...',
+        voiceEnabled: true,
+        photoEnabled: true,
+        quickSuggestions: [
+          '¿Qué hay en stock bajo?',
+          'Recomienda una receta',
+          'Registrar merma',
+          'Ver finanzas del mes',
+          'Cotizar evento',
+        ],
+      });
+    }
+    
+    // Login form handler
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const button = document.getElementById('loginButton');
+      
+      button.disabled = true;
+      button.textContent = 'Autenticando...';
+      
+      try {
+        await api.login(username, password);
+        isAuthenticated = true;
+        showApp();
+      } catch (error) {
+        alert('Error de autenticación: ' + error.message);
+        button.disabled = false;
+        button.textContent = 'Iniciar Sesión';
+      }
+    });
+    
+    // Biometric authentication
+    document.getElementById('biometricButton').addEventListener('click', async () => {
+      if (!window.PublicKeyCredential) {
+        alert('Biometric authentication is not supported on this device');
+        return;
+      }
+      
+      try {
+        // WebAuthn implementation would go here
+        // For now, simulate successful auth
+        alert('Biometric auth simulation: In production, implement WebAuthn');
+        // Simulate login with stored credentials
+        const storedUsername = localStorage.getItem('jarbis_last_username');
+        if (storedUsername) {
+          document.getElementById('username').value = storedUsername;
+          // Auto-submit (in production, use proper credential request)
+          document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+        }
+      } catch (error) {
+        console.error('Biometric auth error:', error);
+        alert('Error en autenticación biométrica');
+      }
+    });
+    
+    // ============================================================================
+    // REQUEST QUEUE PROCESSING
+    // ============================================================================
+    
+    // Process offline queue when connection is restored
+    window.addEventListener('online', async () => {
+      console.log('[App] Connection restored, processing queue...');
+      const success = await api.processOfflineQueue();
+      if (success) {
+        console.log('[App] All queued requests processed');
+      }
+    });
+    
+    // ============================================================================
+    // START APP
+    // ============================================================================
+    
+    init();
+  </script>
+</body>
+</html>
